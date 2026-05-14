@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Virtual environments
+.venv/
+.venv*/
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Secrets / local environment
+.env
+.env.local
+apps/api/.env
+apps/api/.env.local
