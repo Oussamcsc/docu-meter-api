@@ -7,10 +7,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.auth.dependencies import require_admin_token
 from app.core.database import Base, get_db
 from app.core.redis import get_redis
 from app.llm.schemas import DocumentAnalysis, LLMAnalysisRequest
-from app.llm.service import AbstractBaseLLM, get_llm_analyzer
+from app.llm.service import AbstractBaseLLM, LLMProviderError, get_llm_analyzer
 from app.main import app as fastapi_app
 
 
@@ -24,6 +25,11 @@ class FakeLLM(AbstractBaseLLM):
             key_points=[request.text[:160]],
             risk_flags=risk_flags,
         )
+
+
+class FailingLLM(AbstractBaseLLM):
+    async def analyze_document(self, request: LLMAnalysisRequest) -> DocumentAnalysis:
+        raise LLMProviderError("provider down")
 
 
 class FakeRedis:
@@ -67,6 +73,7 @@ def client() -> Generator[TestClient, None, None]:
         yield fake_redis
 
     fastapi_app.dependency_overrides[get_db] = override_get_db
+    fastapi_app.dependency_overrides[require_admin_token] = lambda: None
     fastapi_app.dependency_overrides[get_redis] = override_get_redis
     fastapi_app.dependency_overrides[get_llm_analyzer] = lambda: FakeLLM()
     with TestClient(fastapi_app) as test_client:
@@ -92,7 +99,7 @@ def test_api_key_metering_flow(client: TestClient) -> None:
     )
     assert key_response.status_code == 201
     api_key = key_response.json()["api_key"]
-    assert api_key.startswith("dm_")
+    assert api_key.startswith("dm_live_")
 
     missing_key_response = client.post(
         "/v1/documents/process",
@@ -131,3 +138,43 @@ def test_api_key_metering_flow(client: TestClient) -> None:
     usage_response = client.get(f"/usage/projects/{project_id}")
     assert usage_response.status_code == 200
     assert usage_response.json() == {"project_id": project_id, "events": 1, "units": 2}
+
+
+def test_documents_process_meters_only_after_success(client: TestClient) -> None:
+    org_response = client.post("/organizations", json={"name": "Acme"})
+    assert org_response.status_code == 201
+    project_response = client.post(
+        "/projects",
+        json={"organization_id": org_response.json()["id"], "name": "Production"},
+    )
+    assert project_response.status_code == 201
+    project_id = project_response.json()["id"]
+    key_response = client.post(
+        "/api-keys",
+        json={"project_id": project_id, "name": "Server key"},
+    )
+    api_key = key_response.json()["api_key"]
+
+    fastapi_app.dependency_overrides[get_llm_analyzer] = lambda: FailingLLM()
+    failed_response = client.post(
+        "/v1/documents/process",
+        headers={"Authorization": f"Bearer {api_key}"},
+        json={"filename": "invoice.txt", "content": "invoice due"},
+    )
+    assert failed_response.status_code == 502
+
+    failed_usage = client.get(f"/usage/projects/{project_id}")
+    assert failed_usage.status_code == 200
+    assert failed_usage.json() == {"project_id": project_id, "events": 0, "units": 0}
+
+    fastapi_app.dependency_overrides[get_llm_analyzer] = lambda: FakeLLM()
+    success_response = client.post(
+        "/v1/documents/process",
+        headers={"Authorization": f"Bearer {api_key}"},
+        json={"filename": "invoice.txt", "content": "invoice due"},
+    )
+    assert success_response.status_code == 200
+
+    success_usage = client.get(f"/usage/projects/{project_id}")
+    assert success_usage.status_code == 200
+    assert success_usage.json() == {"project_id": project_id, "events": 1, "units": 1}

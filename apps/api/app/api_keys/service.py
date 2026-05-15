@@ -37,6 +37,18 @@ def create_api_key(db: Session, *, project_id: str, name: str) -> tuple[ApiKey, 
     return api_key, generated.raw_key
 
 
+def mask_api_key(key_prefix: str) -> str:
+    return f"{key_prefix}_••••••••"
+
+
+def revoke_api_key(db: Session, *, api_key: ApiKey) -> ApiKey:
+    api_key.is_active = False
+    db.add(api_key)
+    db.commit()
+    db.refresh(api_key)
+    return api_key
+
+
 def authenticate_api_key(db: Session, raw_key: str) -> ApiKey | None:
     key_prefix = raw_key[:12]
     candidates = db.query(ApiKey).filter(ApiKey.key_prefix == key_prefix, ApiKey.is_active.is_(True)).all()

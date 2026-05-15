@@ -30,5 +30,6 @@ def init_db() -> None:
     import app.organizations.models  # noqa: F401
     import app.projects.models  # noqa: F401
     import app.usage.models  # noqa: F401
+    import app.users.models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)

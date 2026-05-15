@@ -45,6 +45,7 @@ async def process_document(
             detail="Document analysis provider failed",
         ) from exc
 
+    # Meter only after extraction, guard checks, unit calculation, and LLM analysis succeed.
     record_usage(
         db,
         api_key=api_key,

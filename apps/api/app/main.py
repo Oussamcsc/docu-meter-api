@@ -3,13 +3,16 @@ from collections.abc import AsyncIterator
 
 from fastapi import FastAPI
 
+from app.api_keys.routes import admin_router as admin_api_keys_router
 from app.api_keys.routes import router as api_keys_router
 from app.core.config import get_settings
 from app.core.database import init_db
 from app.organizations.routes import router as organizations_router
 from app.projects.routes import router as projects_router
 from app.protected_api.routes import router as protected_api_router
+from app.usage.routes import admin_router as admin_usage_router
 from app.usage.routes import router as usage_router
+from app.users.routes import router as users_router
 
 settings = get_settings()
 
@@ -29,8 +32,11 @@ app = FastAPI(
 app.include_router(organizations_router)
 app.include_router(projects_router)
 app.include_router(api_keys_router)
+app.include_router(admin_api_keys_router)
 app.include_router(protected_api_router)
 app.include_router(usage_router)
+app.include_router(admin_usage_router)
+app.include_router(users_router)
 
 
 @app.get("/health")

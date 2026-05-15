@@ -8,8 +8,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "Docu Meter API"
     database_url: str = "sqlite:///./docu_meter.db"
-    api_key_prefix: str = "dm"
+    api_key_prefix: str = "dm_live"
     api_key_pepper: SecretStr
+    admin_api_token: SecretStr | None = None
     redis_url: str = "redis://localhost:6379/0"
     rate_limit_requests: int = 60
     rate_limit_window_seconds: int = 60

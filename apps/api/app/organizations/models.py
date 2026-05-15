@@ -11,6 +11,7 @@ from app.core.database import Base
 
 if TYPE_CHECKING:
     from app.projects.models import Project
+    from app.users.models import OrganizationMembership
 
 
 class Organization(Base):
@@ -26,6 +27,10 @@ class Organization(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     projects: Mapped[list[Project]] = relationship(
+        back_populates="organization",
+        cascade="all, delete-orphan",
+    )
+    user_memberships: Mapped[list[OrganizationMembership]] = relationship(
         back_populates="organization",
         cascade="all, delete-orphan",
     )
