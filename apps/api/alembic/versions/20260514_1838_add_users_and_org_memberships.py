@@ -1,4 +1,4 @@
-"""add users and organization memberships
+"""initial platform schema
 
 Revision ID: 20260514_1838
 Revises: None
@@ -16,6 +16,64 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    op.create_table(
+        "organizations",
+        sa.Column("id", sa.String(length=36), nullable=False),
+        sa.Column("name", sa.String(length=200), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_organizations_id"), "organizations", ["id"], unique=False)
+
+    op.create_table(
+        "projects",
+        sa.Column("id", sa.String(length=36), nullable=False),
+        sa.Column("organization_id", sa.String(length=36), nullable=False),
+        sa.Column("name", sa.String(length=200), nullable=False),
+        sa.Column("monthly_quota", sa.Integer(), nullable=False),
+        sa.Column("usage_count", sa.Integer(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.ForeignKeyConstraint(["organization_id"], ["organizations.id"]),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_projects_id"), "projects", ["id"], unique=False)
+    op.create_index(op.f("ix_projects_organization_id"), "projects", ["organization_id"], unique=False)
+
+    op.create_table(
+        "api_keys",
+        sa.Column("id", sa.String(length=36), nullable=False),
+        sa.Column("project_id", sa.String(length=36), nullable=False),
+        sa.Column("name", sa.String(length=200), nullable=False),
+        sa.Column("key_prefix", sa.String(length=32), nullable=False),
+        sa.Column("key_digest", sa.String(length=64), nullable=False),
+        sa.Column("is_active", sa.Boolean(), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.ForeignKeyConstraint(["project_id"], ["projects.id"]),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_api_keys_id"), "api_keys", ["id"], unique=False)
+    op.create_index(op.f("ix_api_keys_project_id"), "api_keys", ["project_id"], unique=False)
+    op.create_index(op.f("ix_api_keys_key_prefix"), "api_keys", ["key_prefix"], unique=False)
+    op.create_index(op.f("ix_api_keys_key_digest"), "api_keys", ["key_digest"], unique=True)
+
+    op.create_table(
+        "usage_events",
+        sa.Column("id", sa.String(length=36), nullable=False),
+        sa.Column("project_id", sa.String(length=36), nullable=False),
+        sa.Column("api_key_id", sa.String(length=36), nullable=False),
+        sa.Column("endpoint", sa.String(length=200), nullable=False),
+        sa.Column("units", sa.Integer(), nullable=False),
+        sa.Column("llm_response", sa.JSON(), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.ForeignKeyConstraint(["api_key_id"], ["api_keys.id"]),
+        sa.ForeignKeyConstraint(["project_id"], ["projects.id"]),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(op.f("ix_usage_events_id"), "usage_events", ["id"], unique=False)
+    op.create_index(op.f("ix_usage_events_project_id"), "usage_events", ["project_id"], unique=False)
+    op.create_index(op.f("ix_usage_events_api_key_id"), "usage_events", ["api_key_id"], unique=False)
+    op.create_index(op.f("ix_usage_events_created_at"), "usage_events", ["created_at"], unique=False)
+
     op.create_table(
         "users",
         sa.Column("id", sa.String(length=36), nullable=False),
@@ -71,8 +129,28 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_organization_memberships_user_id"), table_name="organization_memberships")
     op.drop_index(op.f("ix_organization_memberships_id"), table_name="organization_memberships")
     op.drop_table("organization_memberships")
+
     op.drop_index(op.f("ix_users_current_project_id"), table_name="users")
     op.drop_index(op.f("ix_users_current_org_id"), table_name="users")
     op.drop_index(op.f("ix_users_clerk_id"), table_name="users")
     op.drop_index(op.f("ix_users_id"), table_name="users")
     op.drop_table("users")
+
+    op.drop_index(op.f("ix_usage_events_created_at"), table_name="usage_events")
+    op.drop_index(op.f("ix_usage_events_api_key_id"), table_name="usage_events")
+    op.drop_index(op.f("ix_usage_events_project_id"), table_name="usage_events")
+    op.drop_index(op.f("ix_usage_events_id"), table_name="usage_events")
+    op.drop_table("usage_events")
+
+    op.drop_index(op.f("ix_api_keys_key_digest"), table_name="api_keys")
+    op.drop_index(op.f("ix_api_keys_key_prefix"), table_name="api_keys")
+    op.drop_index(op.f("ix_api_keys_project_id"), table_name="api_keys")
+    op.drop_index(op.f("ix_api_keys_id"), table_name="api_keys")
+    op.drop_table("api_keys")
+
+    op.drop_index(op.f("ix_projects_organization_id"), table_name="projects")
+    op.drop_index(op.f("ix_projects_id"), table_name="projects")
+    op.drop_table("projects")
+
+    op.drop_index(op.f("ix_organizations_id"), table_name="organizations")
+    op.drop_table("organizations")

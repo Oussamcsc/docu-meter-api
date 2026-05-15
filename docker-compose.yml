@@ -1,0 +1,70 @@
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-docu_meter}
+      POSTGRES_USER: ${POSTGRES_USER:-docu_meter}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-docu_meter_password}
+    expose:
+      - "5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ./apps/api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://docu_meter:docu_meter_password@db:5432/docu_meter}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      API_KEY_PREFIX: ${API_KEY_PREFIX:-dm_live}
+      API_KEY_PEPPER: ${API_KEY_PEPPER:-dev-only-change-me-before-real-use}
+      ADMIN_API_TOKEN: ${ADMIN_API_TOKEN:-dev-admin-token-change-me}
+      RATE_LIMIT_REQUESTS: ${RATE_LIMIT_REQUESTS:-60}
+      RATE_LIMIT_WINDOW_SECONDS: ${RATE_LIMIT_WINDOW_SECONDS:-60}
+      MAX_DOCUMENT_CHARACTERS: ${MAX_DOCUMENT_CHARACTERS:-50000}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-replace-with-openai-api-key}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      OPENAI_TIMEOUT_SECONDS: ${OPENAI_TIMEOUT_SECONDS:-60}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-8000}:8000"
+
+  web:
+    build:
+      context: ./apps/web
+    restart: unless-stopped
+    environment:
+      DOCU_METER_API_URL: ${DOCU_METER_API_URL:-http://api:8000}
+      ADMIN_API_TOKEN: ${ADMIN_API_TOKEN:-dev-admin-token-change-me}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-pk_test_replace_me}
+      CLERK_SECRET_KEY: ${CLERK_SECRET_KEY:-sk_test_replace_me}
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "${WEB_PORT:-3001}:3000"
+
+volumes:
+  pgdata:
