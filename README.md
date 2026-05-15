@@ -1,8 +1,23 @@
+<div align="center">
+
 # Docu Meter API
 
-**Universal API Auth & Metering Engine with a document analyzer built in.**
+### Universal API auth, quota, and metering engine for AI/document services
 
-Docu Meter is a production-style developer API platform that gives any backend service a reusable request ladder:
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-15-black.svg)](https://nextjs.org/)
+[![Postgres](https://img.shields.io/badge/Postgres-15-336791.svg)](https://www.postgresql.org/)
+[![Redis](https://img.shields.io/badge/Redis-7-DC382D.svg)](https://redis.io/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](https://docs.docker.com/compose/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+</div>
+
+**Docu Meter is a production-style developer API platform:** API keys, HMAC-secured secret storage, Redis rate limits, monthly project quotas, Postgres usage metering, and a Next.js control plane for developer self-service.
+
+The included flagship service is an LLM-powered document analyzer, but the core platform is intentionally generic. You can plug in web scraping, weather data, enrichment APIs, data fetching, image processing, internal tools, or any other microservice and immediately get secure API keys, quota control, durable metering, and dashboard visibility.
+
+Docu Meter gives any backend service a reusable request ladder:
 
 ```text
 API key identity → Redis rate limit → project quota → service execution → Postgres usage metrics
