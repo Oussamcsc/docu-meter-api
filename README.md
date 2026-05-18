@@ -82,6 +82,18 @@ The dashboard provides a developer-facing control plane for:
 
 ---
 
+## Visual proof
+
+Authenticated dashboard screenshots are included under `docs/assets/`:
+
+![Docu Meter dashboard usage](docs/assets/documeter-dashboard-usage.png)
+
+![One-time API key creation with secret redacted](docs/assets/documeter-api-key-created.png)
+
+![Masked API keys with revoke action](docs/assets/documeter-api-keys-masked-revoke.png)
+
+---
+
 ## Stack
 
 | Layer | Tech |
